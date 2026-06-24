@@ -1,7 +1,23 @@
 import { prisma } from "@/lib/db";
 import { fplClient } from "./client";
 import { GameweekStatus } from "@/lib/constants";
-import type { FplEvent } from "./types";
+import type { FplEvent, FplElement } from "./types";
+
+export function playerUpsertFields(p: FplElement) {
+  return {
+    webName: p.web_name,
+    firstName: p.first_name,
+    secondName: p.second_name,
+    teamId: p.team,
+    elementType: p.element_type,
+    nowCost: p.now_cost,
+    totalPoints: p.total_points,
+    form: parseFloat(p.form) || 0,
+    epNext: parseFloat(p.ep_next) || 0,
+    status: p.status,
+    code: p.code,
+  };
+}
 
 export function mapGameweekStatus(e: FplEvent): GameweekStatus {
   if (e.data_checked) return GameweekStatus.FINALIZED;
@@ -22,18 +38,7 @@ export async function syncBootstrap() {
   }
 
   for (const p of data.elements) {
-    const fields = {
-      webName: p.web_name,
-      firstName: p.first_name,
-      secondName: p.second_name,
-      teamId: p.team,
-      elementType: p.element_type,
-      nowCost: p.now_cost,
-      totalPoints: p.total_points,
-      form: parseFloat(p.form) || 0,
-      epNext: parseFloat(p.ep_next) || 0,
-      status: p.status,
-    };
+    const fields = playerUpsertFields(p);
     await prisma.player.upsert({
       where: { id: p.id },
       update: fields,
