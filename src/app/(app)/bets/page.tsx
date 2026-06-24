@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 import { getNextGameweek } from "@/lib/markets";
 import { buildFixtureChips, type FixtureForChips } from "@/lib/betsView";
 import { BetsClient } from "@/components/bets/BetsClient";
@@ -6,6 +7,7 @@ import { BetsClient } from "@/components/bets/BetsClient";
 export const dynamic = "force-dynamic";
 
 export default async function BetsPage() {
+  const session = await getSession();
   const gw = await getNextGameweek();
 
   let chips: ReturnType<typeof buildFixtureChips> = [];
@@ -26,5 +28,12 @@ export default async function BetsPage() {
     chips = buildFixtureChips(forChips, teamShortById);
   }
 
-  return <BetsClient gwName={gw?.name ?? "GW"} fixtures={chips} hasGameweek={!!gw} />;
+  return (
+    <BetsClient
+      gwName={gw?.name ?? "GW"}
+      fixtures={chips}
+      hasGameweek={!!gw}
+      displayName={session?.displayName ?? ""}
+    />
+  );
 }

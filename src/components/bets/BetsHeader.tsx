@@ -1,20 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { HelpCircle, Plus, Ticket } from "lucide-react";
+import { Plus, Ticket, User } from "lucide-react";
 import { BalancePill } from "@/components/shell/BalancePill";
 
-export function BetsHeader({ onOpenEntries }: { onOpenEntries: () => void }) {
+export function BetsHeader({
+  onOpenEntries,
+  displayName = "",
+}: {
+  onOpenEntries: () => void;
+  displayName?: string;
+}) {
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-nav-bg backdrop-blur-xl border-b border-border-base sticky top-0 z-40">
-      <Link href="/bets" className="font-extrabold text-lg">
-        Fan<span className="text-brand-blue">base</span>
-      </Link>
-      <div className="flex items-center gap-2.5">
-        <span className="flex flex-col items-center text-[9px] text-text-muted" aria-hidden>
-          <HelpCircle size={18} />
-          Help
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-9 h-9 rounded-full bg-card-bg border border-border-base flex items-center justify-center text-text-muted flex-none">
+          <User size={18} />
         </span>
+        <div className="leading-tight min-w-0">
+          <Link href="/bets" className="font-extrabold text-base block truncate">
+            Fan<span className="text-brand-blue">base</span>
+          </Link>
+          <div className="text-[10px] text-text-muted truncate">
+            {displayName ? displayName : "Just now"}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-none">
         <BalancePill />
         <Link
           href="/wallet"

@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Zap } from "lucide-react";
 import type { MarketRow } from "@/lib/marketRows";
 import type { FixtureChip } from "@/lib/betsView";
 import { apiGet, apiPost, fmtCredits } from "@/lib/client";
 import { BetsHeader } from "./BetsHeader";
+import { PositionFilter } from "./PositionFilter";
 import { FixtureChips } from "./FixtureChips";
 import { BetTabs, type TabKey } from "./BetTabs";
+import { MarketSection } from "./MarketSection";
 import { PropCard, type Pick } from "./PropCard";
 import { BetSlipBar, type Leg } from "./BetSlipBar";
 import { MyEntriesSheet } from "./MyEntriesSheet";
@@ -18,16 +21,19 @@ export function BetsClient({
   gwName,
   fixtures,
   hasGameweek,
+  displayName = "",
 }: {
   gwName: string;
   fixtures: FixtureChip[];
   hasGameweek: boolean;
+  displayName?: string;
 }) {
   const [markets, setMarkets] = useState<MarketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("popular");
   const [query, setQuery] = useState("");
   const [fixtureId, setFixtureId] = useState<number | null>(null);
+  const [position, setPosition] = useState<number | null>(null);
   const [legs, setLegs] = useState<Leg[]>([]);
   const [stake, setStake] = useState(100);
   const [busy, setBusy] = useState(false);
@@ -41,9 +47,10 @@ export function BetsClient({
       .finally(() => setLoading(false));
   }, []);
 
-  // Filtering by fixture chip + search, regardless of tab.
+  // Filtering by position category + fixture chip + search, regardless of tab.
   const base = useMemo(() => {
     let list = markets;
+    if (position != null) list = list.filter((m) => m.position === position);
     if (fixtureId != null) list = list.filter((m) => m.fixtureId === fixtureId);
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -52,7 +59,7 @@ export function BetsClient({
       );
     }
     return list;
-  }, [markets, fixtureId, query]);
+  }, [markets, position, fixtureId, query]);
 
   const popular = useMemo(() => base.slice(0, POPULAR_COUNT), [base]);
 
@@ -112,7 +119,8 @@ export function BetsClient({
 
   return (
     <div className="min-h-screen bg-app-bg">
-      <BetsHeader onOpenEntries={() => setEntriesOpen(true)} />
+      <BetsHeader onOpenEntries={() => setEntriesOpen(true)} displayName={displayName} />
+      <PositionFilter active={position} onSelect={setPosition} />
       <FixtureChips fixtures={fixtures} activeFixtureId={fixtureId} onSelect={setFixtureId} />
       <BetTabs active={tab} onChange={setTab} query={query} onQuery={setQuery} />
 
@@ -131,15 +139,46 @@ export function BetsClient({
           <p className="text-text-muted text-sm">No markets match your filters.</p>
         )}
 
-        {!loading && tab !== "match" && (
+        {!loading && tab === "popular" && base.length > 0 && (
           <>
-            {tab === "popular" && (
-              <div className="text-[11px] uppercase tracking-wide text-text-muted font-bold mb-2">
-                🔥 Popular this gameweek
-              </div>
+            <MarketSection
+              title={
+                <>
+                  <Zap size={12} className="text-brand-blue" /> Promos
+                </>
+              }
+            >
+              <PropCard
+                variant="featured"
+                market={popular[0]}
+                gwName={gwName}
+                selected={pickOf(popular[0].id)}
+                onPick={onPick}
+              />
+            </MarketSection>
+
+            {popular.length > 1 && (
+              <MarketSection title="🔥 Popular" badges={[gwName]}>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {popular.slice(1).map((m) => (
+                    <PropCard
+                      key={m.id}
+                      market={m}
+                      gwName={gwName}
+                      selected={pickOf(m.id)}
+                      onPick={onPick}
+                    />
+                  ))}
+                </div>
+              </MarketSection>
             )}
+          </>
+        )}
+
+        {!loading && tab === "all" && base.length > 0 && (
+          <MarketSection title="All players" badges={[gwName]}>
             <div className="grid grid-cols-2 gap-2.5">
-              {(tab === "popular" ? popular : base).map((m) => (
+              {base.map((m) => (
                 <PropCard
                   key={m.id}
                   market={m}
@@ -149,16 +188,13 @@ export function BetsClient({
                 />
               ))}
             </div>
-          </>
+          </MarketSection>
         )}
 
         {!loading && tab === "match" && (
-          <div className="space-y-5">
+          <div>
             {groups.map((g) => (
-              <div key={g.label}>
-                <div className="text-[11px] uppercase tracking-wide text-text-muted font-bold mb-2">
-                  {g.label}
-                </div>
+              <MarketSection key={g.label} title={g.label} badges={["90'"]}>
                 <div className="grid grid-cols-2 gap-2.5">
                   {g.rows.map((m) => (
                     <PropCard
@@ -170,7 +206,7 @@ export function BetsClient({
                     />
                   ))}
                 </div>
-              </div>
+              </MarketSection>
             ))}
           </div>
         )}
