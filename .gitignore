@@ -47,3 +47,6 @@ prisma/*.db
 
 # local scratch
 scratch_dev.log
+
+# Superpowers scratch (ledger, brainstorm mockups)
+/.superpowers/
