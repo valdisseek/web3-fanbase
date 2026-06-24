@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Ticket, Trophy, Shirt, Compass, MoreHorizontal } from "lucide-react";
 
-const PROTO = /^\/(leagues|fantasy|explore|more)(\/|$)/;
+const PROTO = /^\/(bets|leagues|fantasy|explore|more)(\/|$)/;
 
 export function BottomNav() {
   const pathname = usePathname();
   const isProto = PROTO.test(pathname);
 
-  const bettingActive = !isProto;
+  const bettingActive = pathname.startsWith("/bets") || pathname.startsWith("/lobby");
   const leaguesActive = pathname.startsWith("/leagues");
   const fantasyActive = pathname.startsWith("/fantasy");
   const exploreActive = pathname.startsWith("/explore");
@@ -19,7 +19,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto">
       <div className="bg-nav-bg backdrop-blur-xl border-t border-border-base px-6 py-2 flex justify-between items-center h-[84px] pb-6 transition-colors duration-300">
-        <NavButton href="/lobby" icon={<Ticket size={24} />} label="Betting" isActive={bettingActive} />
+        <NavButton href="/bets" icon={<Ticket size={24} />} label="Bets" isActive={bettingActive} />
         <NavButton href="/leagues" icon={<Trophy size={24} />} label="Leagues" isActive={leaguesActive} />
 
         {/* Floating Action Button for Fantasy */}
