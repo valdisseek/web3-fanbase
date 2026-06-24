@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv _prototype_src C:/Users/poswi/AppData/Local/Temp/claude/c--projects-Web3-fanbase/76e48f72-1048-4ee9-8353-7b317e20be27/scratchpad/_prototype_src)",
+      "Bash(mv 'fanbase-solutions-prototype \\(3\\).zip' C:/Users/poswi/AppData/Local/Temp/claude/c--projects-Web3-fanbase/76e48f72-1048-4ee9-8353-7b317e20be27/scratchpad/prototype.zip)"
+    ]
+  }
+}

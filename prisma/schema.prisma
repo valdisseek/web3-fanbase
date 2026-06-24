@@ -1,0 +1,219 @@
+// FPL DFS / Betting MVP — Prisma schema
+// NOTE: SQLite for zero-setup local dev. SQLite has no native enums, so all
+// status/type fields are String columns; the allowed values live as TS const
+// unions in src/lib/constants.ts. Money is stored as BigInt (integer credits).
+// JSON payloads (lineups) are stored as serialized String (see lib/json.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identity & Money ----------
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  account      CreditAccount?
+  betSlips     BetSlip[]
+  h2hCreated   H2HChallenge[] @relation("creator")
+  h2hOpponent  H2HChallenge[] @relation("opponent")
+  poolEntries  PoolEntry[]
+}
+
+model CreditAccount {
+  id      String  @id @default(cuid())
+  userId  String? @unique // null => HOUSE
+  isHouse Boolean @default(false)
+  balance BigInt  @default(0)
+  version Int     @default(0) // optimistic lock
+
+  user    User?         @relation(fields: [userId], references: [id])
+  entries LedgerEntry[]
+}
+
+model LedgerEntry {
+  id             String   @id @default(cuid())
+  accountId      String
+  amount         BigInt // signed: +credit, -debit
+  type           String // LedgerType: GRANT STAKE PAYOUT RAKE REFUND ADJUSTMENT
+  refType        String?
+  refId          String?
+  idempotencyKey String?  @unique
+  createdAt      DateTime @default(now())
+
+  account CreditAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId, createdAt])
+}
+
+// ---------- Synced FPL Data ----------
+model Team {
+  id        Int      @id // FPL team.id
+  name      String
+  shortName String
+  code      Int
+  players   Player[]
+}
+
+model Player {
+  id          Int    @id // FPL element.id
+  webName     String
+  firstName   String
+  secondName  String
+  teamId      Int
+  elementType Int // 1 GKP 2 DEF 3 MID 4 FWD
+  nowCost     Int // tenths of a million
+  totalPoints Int    @default(0)
+  form        Float  @default(0)
+  epNext      Float  @default(0) // expected points next GW (pricing input)
+  status      String @default("a")
+
+  team     Team                 @relation(fields: [teamId], references: [id])
+  gwPoints PlayerGameweekStat[]
+  markets  PropMarket[]
+}
+
+model Gameweek {
+  id           Int      @id // FPL event.id
+  name         String
+  deadlineTime DateTime
+  status       String   @default("UPCOMING") // UPCOMING LIVE FINISHED FINALIZED
+  finished     Boolean  @default(false)
+  dataChecked  Boolean  @default(false)
+
+  fixtures Fixture[]
+  markets  PropMarket[]
+  pools    Pool[]
+  h2h      H2HChallenge[]
+  stats    PlayerGameweekStat[]
+}
+
+model Fixture {
+  id          Int       @id // FPL fixture.id
+  gameweekId  Int?
+  teamHId     Int
+  teamAId     Int
+  teamHScore  Int?
+  teamAScore  Int?
+  kickoffTime DateTime?
+  started     Boolean   @default(false)
+  finished    Boolean   @default(false)
+
+  gameweek Gameweek? @relation(fields: [gameweekId], references: [id])
+}
+
+model PlayerGameweekStat {
+  playerId    Int
+  gameweekId  Int
+  totalPoints Int
+  minutes     Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  player   Player   @relation(fields: [playerId], references: [id])
+  gameweek Gameweek @relation(fields: [gameweekId], references: [id])
+
+  @@id([playerId, gameweekId])
+}
+
+// ---------- Props + Parlays ----------
+model PropMarket {
+  id              String  @id @default(cuid())
+  playerId        Int
+  gameweekId      Int
+  line            Float
+  overMultiplier  Float
+  underMultiplier Float
+  status          String  @default("OPEN") // OPEN LOCKED SETTLED VOID
+  resultPoints    Int?
+
+  player   Player   @relation(fields: [playerId], references: [id])
+  gameweek Gameweek @relation(fields: [gameweekId], references: [id])
+  legs     BetLeg[]
+
+  @@unique([playerId, gameweekId])
+}
+
+model BetSlip {
+  id                 String   @id @default(cuid())
+  userId             String
+  stake              BigInt
+  combinedMultiplier Float
+  potentialPayout    BigInt
+  status             String   @default("PENDING") // PENDING WON LOST VOID
+  payout             BigInt?
+  createdAt          DateTime @default(now())
+
+  user User     @relation(fields: [userId], references: [id])
+  legs BetLeg[]
+}
+
+model BetLeg {
+  id         String  @id @default(cuid())
+  slipId     String
+  marketId   String
+  pick       String // OVER UNDER
+  line       Float
+  multiplier Float
+  result     String  @default("PENDING") // PENDING WON LOST PUSH VOID
+
+  slip   BetSlip    @relation(fields: [slipId], references: [id], onDelete: Cascade)
+  market PropMarket @relation(fields: [marketId], references: [id])
+}
+
+// ---------- H2H ----------
+model H2HChallenge {
+  id             String  @id @default(cuid())
+  creatorId      String
+  opponentId     String?
+  gameweekId     Int
+  metric         String // LINEUP_TOTAL SINGLE_PLAYER
+  playerId       Int? // for SINGLE_PLAYER
+  creatorLineup  String? // JSON int[] for LINEUP_TOTAL
+  opponentLineup String?
+  stake          BigInt
+  status         String  @default("OPEN") // OPEN ACCEPTED LOCKED SETTLED VOID
+  winnerId       String? // null + SETTLED => tie
+
+  creator  User     @relation("creator", fields: [creatorId], references: [id])
+  opponent User?    @relation("opponent", fields: [opponentId], references: [id])
+  gameweek Gameweek @relation(fields: [gameweekId], references: [id])
+}
+
+// ---------- Pools ----------
+model Pool {
+  id         String @id @default(cuid())
+  name       String
+  gameweekId Int
+  format     String // GPP DOUBLE_UP
+  entryFee   BigInt
+  rakeBps    Int // basis points, 1000 = 10%
+  maxEntries Int
+  minEntries Int
+  status     String @default("OPEN") // OPEN LOCKED SETTLED VOID
+
+  gameweek Gameweek    @relation(fields: [gameweekId], references: [id])
+  entries  PoolEntry[]
+}
+
+model PoolEntry {
+  id     String  @id @default(cuid())
+  poolId String
+  userId String
+  lineup String // JSON int[] of playerIds
+  score  Int?
+  rank   Int?
+  payout BigInt?
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([poolId, userId])
+}
