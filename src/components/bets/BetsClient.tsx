@@ -7,7 +7,7 @@ import type { MarketRow } from "@/lib/marketRows";
 import type { FixtureChip } from "@/lib/betsView";
 import { apiGet, apiPost, fmtCredits } from "@/lib/client";
 import { BetsHeader } from "./BetsHeader";
-import { PositionFilter } from "./PositionFilter";
+import { SportFilter, SPORTS } from "./SportFilter";
 import { FixtureChips } from "./FixtureChips";
 import { BetTabs, type TabKey } from "./BetTabs";
 import { MarketSection } from "./MarketSection";
@@ -33,7 +33,7 @@ export function BetsClient({
   const [tab, setTab] = useState<TabKey>("popular");
   const [query, setQuery] = useState("");
   const [fixtureId, setFixtureId] = useState<number | null>(null);
-  const [position, setPosition] = useState<number | null>(null);
+  const [sport, setSport] = useState<string>("football");
   const [legs, setLegs] = useState<Leg[]>([]);
   const [stake, setStake] = useState(100);
   const [busy, setBusy] = useState(false);
@@ -47,10 +47,9 @@ export function BetsClient({
       .finally(() => setLoading(false));
   }, []);
 
-  // Filtering by position category + fixture chip + search, regardless of tab.
+  // Filtering by fixture chip + search, regardless of tab.
   const base = useMemo(() => {
     let list = markets;
-    if (position != null) list = list.filter((m) => m.position === position);
     if (fixtureId != null) list = list.filter((m) => m.fixtureId === fixtureId);
     if (query.trim()) {
       const q = query.toLowerCase();
@@ -59,7 +58,7 @@ export function BetsClient({
       );
     }
     return list;
-  }, [markets, position, fixtureId, query]);
+  }, [markets, fixtureId, query]);
 
   const popular = useMemo(() => base.slice(0, POPULAR_COUNT), [base]);
 
@@ -120,7 +119,30 @@ export function BetsClient({
   return (
     <div className="min-h-screen bg-app-bg">
       <BetsHeader onOpenEntries={() => setEntriesOpen(true)} displayName={displayName} />
-      <PositionFilter active={position} onSelect={setPosition} />
+      <SportFilter active={sport} onSelect={setSport} />
+
+      {sport !== "football" && (
+        <div className="px-4 pt-10 pb-28 text-center">
+          <div className="text-5xl mb-3">
+            {SPORTS.find((s) => s.key === sport)?.icon}
+          </div>
+          <div className="font-bold text-lg">
+            {SPORTS.find((s) => s.key === sport)?.label} betting
+          </div>
+          <p className="text-text-muted text-sm mt-1">
+            Coming soon — we&apos;re lining up markets for this sport.
+          </p>
+          <button
+            onClick={() => setSport("football")}
+            className="mt-4 text-brand-blue text-sm font-semibold"
+          >
+            ← Back to Football
+          </button>
+        </div>
+      )}
+
+      {sport === "football" && (
+      <>
       <FixtureChips fixtures={fixtures} activeFixtureId={fixtureId} onSelect={setFixtureId} />
       <BetTabs active={tab} onChange={setTab} query={query} onQuery={setQuery} />
 
@@ -211,6 +233,8 @@ export function BetsClient({
           </div>
         )}
       </div>
+      </>
+      )}
 
       <BetSlipBar
         legs={legs}
