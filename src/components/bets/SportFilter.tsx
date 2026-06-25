@@ -12,12 +12,12 @@ export interface Sport {
 
 export const SPORTS: Sport[] = [
   { key: "football", label: "Football", icon: "⚽", available: true },
+  { key: "nfl", label: "Am. Football", icon: "🏈", available: false },
   { key: "basketball", label: "NBA", icon: "🏀", available: false },
   { key: "baseball", label: "MLB", icon: "⚾", available: false },
   { key: "tennis", label: "Tennis", icon: "🎾", available: false },
   { key: "hockey", label: "Hockey", icon: "🏒", available: false },
   { key: "cricket", label: "Cricket", icon: "🏏", available: false },
-  { key: "nfl", label: "NFL", icon: "🏈", available: false },
   { key: "mma", label: "MMA", icon: "🥊", available: false },
 ];
 
@@ -55,7 +55,7 @@ export function SportFilter({
               )}
             </span>
             <span
-              className={`text-[10px] ${
+              className={`text-[10px] whitespace-nowrap ${
                 isActive ? "text-text-main font-semibold" : "text-text-muted"
               }`}
             >
