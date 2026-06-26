@@ -24,15 +24,21 @@ Postgres — it uses only `String`/`BigInt`/`Float` columns (no native enums, no
 > Free instances spin down after ~15 min idle and cold-start on the next request
 > (~30 s). Fine for a demo; upgrade the instance later if you need always-on.
 
-## 3. Seed once (after first green deploy)
+## 3. Seed once (from your machine — free tier has no Shell)
 
-Service **Shell** tab:
+Render's free instances don't offer a Shell, so seed the Neon database from
+your local machine (Neon is reachable from anywhere; it's the same DB Render
+uses). With your local `.env` `DATABASE_URL` set to the Neon string:
 
 ```bash
+npx prisma generate   # regenerate the client for Postgres
+npx prisma db push    # ensure the schema exists (no-op if the build already pushed)
 npm run db:seed
 ```
 
-Creates the HOUSE credit account + demo users. Login/credits don't work without it.
+Creates the HOUSE credit account + demo users (`alice@example.com` /
+`password123`, 10,000 credits). Login/credits don't work without it. The seed
+is idempotent — safe to re-run.
 
 ## 4. Load FPL data + schedule cron
 
