@@ -1,15 +1,16 @@
 // FPL DFS / Betting MVP — Prisma schema
-// NOTE: SQLite for zero-setup local dev. SQLite has no native enums, so all
-// status/type fields are String columns; the allowed values live as TS const
-// unions in src/lib/constants.ts. Money is stored as BigInt (integer credits).
-// JSON payloads (lineups) are stored as serialized String (see lib/json.ts).
+// NOTE: PostgreSQL (Neon free tier in prod; point local DATABASE_URL at a Neon
+// branch or a local Postgres). Status/type fields are String columns (not native
+// enums) — allowed values live as TS const unions in src/lib/constants.ts. Money
+// is stored as BigInt (integer credits). JSON payloads (lineups) are stored as
+// serialized String (see lib/json.ts).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

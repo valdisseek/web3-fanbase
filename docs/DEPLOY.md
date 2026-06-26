@@ -1,25 +1,32 @@
-# Deploying to Render (SQLite + persistent disk)
+# Deploying to Render — free (Neon Postgres)
 
-The app keeps its SQLite database on a Render **Disk** mounted at `/data`, so it
-survives deploys and restarts. Disks require a paid instance (Starter, ~$7/mo);
-the free tier has no persistent storage and SQLite would be wiped on every restart.
+Render's **free** web instance has no persistent disk, so the database lives in
+**Neon** (free, durable Postgres). The schema migrated cleanly from SQLite to
+Postgres — it uses only `String`/`BigInt`/`Float` columns (no native enums, no
+`Json`), so no data-type changes were needed.
 
-## One-time deploy
+## 1. Create the database (Neon — free, no card)
 
-1. **Push is already done** — repo: https://github.com/valdisseek/web3-fanbase
-2. In Render: **New → Blueprint**, connect the repo, select branch `master`.
-   Render reads [`render.yaml`](../render.yaml) and provisions the web service +
-   1 GB disk + auto-generated `JWT_SECRET` / `CRON_SECRET`.
-3. Confirm the env vars on the service:
-   - `DATABASE_URL = file:/data/prod.db`
-   - `JWT_SECRET` — auto-generated (or paste your own)
-   - `CRON_SECRET` — auto-generated (note it; you need it for the cron calls below)
-4. Let the first deploy finish. `startCommand` runs `prisma db push` against the
-   disk, creating the schema, then starts Next on `$PORT`.
+1. Sign up at https://neon.tech → **New Project** (name it e.g. `web3-fanbase`).
+2. Copy the **pooled** connection string (the host contains `-pooler`), keeping
+   `?sslmode=require`. It looks like:
+   `postgresql://user:pass@ep-xxx-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require`
 
-## Seed once (after first green deploy)
+## 2. Deploy on Render
 
-Open the service **Shell** tab and run:
+1. Render → **New → Blueprint**, connect `valdisseek/web3-fanbase`, branch `master`.
+   It reads [`render.yaml`](../render.yaml): free web service + auto-generated
+   `JWT_SECRET` / `CRON_SECRET`.
+2. When prompted for `DATABASE_URL`, paste the Neon pooled string from step 1.
+3. Deploy. The build runs `prisma db push` against Neon (creates the schema),
+   then `next build`; the service starts on `$PORT`.
+
+> Free instances spin down after ~15 min idle and cold-start on the next request
+> (~30 s). Fine for a demo; upgrade the instance later if you need always-on.
+
+## 3. Seed once (after first green deploy)
+
+Service **Shell** tab:
 
 ```bash
 npm run db:seed
@@ -27,16 +34,16 @@ npm run db:seed
 
 Creates the HOUSE credit account + demo users. Login/credits don't work without it.
 
-## Load FPL data + schedule cron
+## 4. Load FPL data + schedule cron
 
-Markets only appear after a sync. Run once, then on a schedule:
+Markets appear only after a sync. Run once, then on a schedule:
 
 ```bash
 curl -X POST https://<your-app>.onrender.com/api/cron/sync   -H "x-cron-secret: <CRON_SECRET>"
 ```
 
-Recurring jobs — point a scheduler at these three endpoints with the
-`x-cron-secret` header:
+Recurring — point a scheduler at these with the `x-cron-secret` header
+(free external pinger like cron-job.org works; Render Cron Jobs are paid):
 
 | Endpoint | Suggested cadence |
 |---|---|
@@ -44,13 +51,24 @@ Recurring jobs — point a scheduler at these three endpoints with the
 | `POST /api/cron/lock`   | every ~1 min near deadlines |
 | `POST /api/cron/settle` | every ~10 min |
 
-Use Render **Cron Jobs** (separate paid service) or a free external pinger
-(e.g. cron-job.org) that sends the header.
+## Local development
+
+Local dev now also uses Postgres (the schema `provider` is `postgresql`):
+
+1. In `.env`, set `DATABASE_URL` to a Neon string — either a separate Neon
+   **branch** of the same project, or the same database for solo work.
+2. Re-generate + apply + seed:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   npm run db:seed
+   ```
+3. `npm run dev` → http://localhost:5000
+
+The local `prisma/dev.db` SQLite file and `.env` stay git-ignored and unused.
 
 ## Notes
 
-- The repo's `prisma/dev.db` and `.env` are git-ignored — production uses the
-  disk DB and Render-managed env vars, never the local files.
-- No Prisma migrations are used; schema is applied with `prisma db push`.
+- No Prisma migrations; schema is applied with `prisma db push`.
 - To deploy the Bets redesign instead of current `master`, merge
-  `feat/bets-tab-draftea` into `master` first (it is currently unmerged).
+  `feat/bets-tab-draftea` into `master` first (currently unmerged).
