@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: web3-fanbase
+    runtime: node
+    plan: starter            # Disks require a paid plan; free tier has no persistent storage.
+    region: oregon
+    branch: master
+    buildCommand: npm install && npm run build
+    # db push creates the SQLite schema on the mounted disk on each boot (idempotent),
+    # then Next binds the port Render injects via $PORT.
+    startCommand: npx prisma db push --skip-generate && npx next start -p $PORT
+    healthCheckPath: /login
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/data/prod.db
+      - key: JWT_SECRET
+        generateValue: true   # Render generates a strong value on first deploy.
+      - key: CRON_SECRET
+        generateValue: true
+      - key: NODE_VERSION
+        value: "20"
