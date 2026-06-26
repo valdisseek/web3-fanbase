@@ -2,23 +2,19 @@ services:
   - type: web
     name: web3-fanbase
     runtime: node
-    plan: starter            # Disks require a paid plan; free tier has no persistent storage.
+    plan: free               # Free instance: no persistent disk, so the DB lives in Neon (external Postgres).
     region: oregon
     branch: master
-    buildCommand: npm install && npm run build
-    # db push creates the SQLite schema on the mounted disk on each boot (idempotent),
-    # then Next binds the port Render injects via $PORT.
-    startCommand: npx prisma db push --skip-generate && npx next start -p $PORT
+    # postinstall runs `prisma generate`; db push applies the schema to Neon once
+    # per deploy (idempotent), then Next builds.
+    buildCommand: npm install && npx prisma db push --skip-generate && npm run build
+    startCommand: npx next start -p $PORT
     healthCheckPath: /login
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
-        value: file:/data/prod.db
+        sync: false          # Paste your Neon pooled connection string in the Render dashboard.
       - key: JWT_SECRET
-        generateValue: true   # Render generates a strong value on first deploy.
+        generateValue: true  # Render generates a strong value on first deploy.
       - key: CRON_SECRET
         generateValue: true
       - key: NODE_VERSION
