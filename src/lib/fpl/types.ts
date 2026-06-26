@@ -9,6 +9,7 @@ export interface FplTeam {
 
 export interface FplElement {
   id: number;
+  code: number;
   web_name: string;
   first_name: string;
   second_name: string;

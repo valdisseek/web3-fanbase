@@ -6,7 +6,7 @@ import { BalancePill } from "@/components/shell/BalancePill";
 import { BottomNav } from "@/components/shell/BottomNav";
 import { LogoutButton } from "@/components/shell/LogoutButton";
 
-const PROTO = /^\/(leagues|fantasy|explore|more)(\/|$)/;
+const PROTO = /^\/(bets|leagues|fantasy|explore|more)(\/|$)/;
 
 export function AppShell({
   displayName,

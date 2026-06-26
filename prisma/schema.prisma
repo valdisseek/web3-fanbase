@@ -76,6 +76,7 @@ model Player {
   form        Float  @default(0)
   epNext      Float  @default(0) // expected points next GW (pricing input)
   status      String @default("a")
+  code        Int?   // FPL element.code — player photo id
 
   team     Team                 @relation(fields: [teamId], references: [id])
   gwPoints PlayerGameweekStat[]
